@@ -24,13 +24,16 @@
  */
 
 #import <Foundation/Foundation.h>
+
 #import "UAObservable.h"
 
 @class UA_ASIHTTPRequest;
 @class UASubscriptionContent;
 
 @interface UAContentInventory : UAObservable {
+  @private
     NSMutableArray *contentArray;
+    NSMutableDictionary *contentDict;
 }
 
 @property (nonatomic, retain, readonly) NSMutableArray *contentArray;
@@ -38,6 +41,7 @@
 - (id)init;
 - (void)loadWithArray:(NSArray *)array;
 - (void)loadInventory;
-- (NSArray *)contentsForSubscription:(NSString *)subscriptionKey;
+- (NSArray *)contentForSubscription:(NSString *)subscriptionKey;
+- (UASubscriptionContent *)contentForKey:(NSString *)contentKey;
 
 @end

@@ -36,6 +36,7 @@ SINGLETON_IMPLEMENTATION(UAStoreFrontUI)
 @synthesize productListViewController;
 @synthesize isiPad;
 @synthesize uaWindow;
+@synthesize originalWindow;
 @synthesize isVisible;
 @synthesize localizationBundle;
 
@@ -49,6 +50,7 @@ static BOOL runiPhoneTargetOniPad = NO;
     RELEASE_SAFELY(rootViewController);
     RELEASE_SAFELY(productListViewController);
     RELEASE_SAFELY(uaWindow);
+    RELEASE_SAFELY(originalWindow);
     RELEASE_SAFELY(alertHandler);
     RELEASE_SAFELY(localizationBundle);
 
@@ -64,9 +66,7 @@ static BOOL runiPhoneTargetOniPad = NO;
 
         self.localizationBundle = [NSBundle bundleWithPath:path];
 
-        NSString *deviceType = [UIDevice currentDevice].model;
-
-        if ([deviceType hasPrefix:@"iPad"] && !runiPhoneTargetOniPad) {
+        if ((UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) && !runiPhoneTargetOniPad) {
             isiPad = YES;
             UAStoreFrontSplitViewController *svc = [[UAStoreFrontSplitViewController alloc] init];
             productListViewController = [[svc productListViewController] retain];
@@ -102,9 +102,12 @@ static BOOL runiPhoneTargetOniPad = NO;
             ui.uaWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
             [ui.uaWindow addSubview:ui.rootViewController.view];
         }
-        
+
+        ui.originalWindow = viewController.view.window;
+
         [ui.rootViewController viewWillAppear:animated];
         [ui.uaWindow makeKeyAndVisible];
+        ui.originalWindow.hidden = YES;
     }
     
     ui->isVisible = YES;
@@ -124,15 +127,27 @@ static BOOL runiPhoneTargetOniPad = NO;
         [ui.rootViewController viewWillDisappear:ui->animated];
     }
 
-    if (ui.rootViewController.parentViewController != nil) {
+    UIViewController *presentingViewController = nil;
+    if ([ui.rootViewController respondsToSelector:@selector(presentingViewController)]) {
+        presentingViewController = [ui.rootViewController presentingViewController]; //iOS5 method
+    } else {
+        presentingViewController = ui.rootViewController.parentViewController;// <= 4.x
+    }
+    
+    if (presentingViewController != nil) {
         // for iPhone/iPod displayStoreFront:animated:
         [ui.rootViewController dismissModalViewControllerAnimated:ui->animated];
 
     } else if (ui.rootViewController.view.superview == ui.uaWindow) {
-        // for iPad displayStoreFront:animated:
-        [ui.uaWindow resignKeyWindow];
-        ui.uaWindow.hidden = YES;
-        
+
+        // For iPad displayStoreFront:animated:
+        // Return control to original window
+        [ui.originalWindow makeKeyAndVisible];
+        ui.originalWindow = nil;
+
+        [ui.rootViewController.view removeFromSuperview];
+        ui.uaWindow = nil;
+
     } else {
         // For other circumstances. e.g custom showing rootViewController or changed the showing code of StoreFront
         UALOG(@"UAStoreFrontUI rootViewController appears to be customized. Add your own quit logic here");
