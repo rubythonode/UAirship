@@ -26,18 +26,54 @@
 #import <Foundation/Foundation.h>
 
 #import "UADownloadManager.h"
+#import "UALocalStorageDirectory.h"
 
+#define kSubscriptionURLCacheFile [[UALocalStorageDirectory uaDirectory].path stringByAppendingPathComponent:@"/subsURLCache.plist"]
+
+#define kPendingSubscriptionContentFile [[UALocalStorageDirectory uaDirectory].path stringByAppendingPathComponent:@"/pendingSubscriptions.history"]
+
+#define kDecompressingSubscriptionContentFile [[UALocalStorageDirectory uaDirectory].path stringByAppendingPathComponent:@"/decompressingSubscriptions.history"]
+
+@class UAContentURLCache;
 @class UASubscriptionContent;
 
+/**
+ * This class handles subscription downloads and decompression.
+ */
 @interface UASubscriptionDownloadManager : NSObject <UADownloadManagerDelegate> {
   @private
+    NSMutableArray *pendingSubscriptionContent;
+    NSMutableArray *decompressingSubscriptionContent;
+    NSMutableArray *currentlyDecompressingContent;
     UADownloadManager *downloadManager;
     NSString *downloadDirectory;
+    UAContentURLCache *contentURLCache;
     BOOL createProductIDSubdir;
 }
 
+/**
+ * The download directory.  If not set by the user, this will return a default value.
+ */
 @property (nonatomic, retain) NSString *downloadDirectory;
+@property (nonatomic, retain) UAContentURLCache *contentURLCache;
+/**
+ * Indicates whether to create a subscription key or product ID subdirectory for downloaded content.
+ * Defaults to YES.
+ */
 @property (nonatomic, assign) BOOL createProductIDSubdir;
+@property (nonatomic, retain) NSMutableArray *pendingSubscriptionContent;
+@property (nonatomic, retain) NSMutableArray *decompressingSubscriptionContent;
+@property (nonatomic, retain) NSMutableArray *currentlyDecompressingContent;
+
+//load the pending subscriptions dictionary from kPendingSubscriptionsFile
+- (void)loadPendingSubscriptionContent;
+- (BOOL)hasPendingSubscriptionContent:(UASubscriptionContent *)subscriptionContent;
+- (void)resumePendingSubscriptionContent;
+
+//load the decompressing subscriptions dictionary from kDecompressingSubscriptionsFile
+- (void)loadDecompressingSubscriptionContent;
+- (BOOL)hasDecompressingSubscriptionContent:(UASubscriptionContent *)subscriptionContent;
+- (void)resumeDecompressingSubscriptionContent;
 
 - (void)download:(UASubscriptionContent *)content;
 

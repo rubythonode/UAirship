@@ -27,6 +27,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #import "UAViewUtils.h"
 #import "UAStoreFrontUI.h"
 #import "UAProductDetailViewController.h"
+#import "UAAsycImageView.h"
 
 // Weak link to this notification since it doesn't exist in iOS 3.x
 UIKIT_EXTERN NSString* const UIApplicationDidEnterBackgroundNotification __attribute__((weak_import));
@@ -211,8 +212,10 @@ UIKIT_EXTERN NSString* const UIApplicationDidBecomeActiveNotification __attribut
         }
     } else if (product.status == UAProductStatusPurchased) {
         buttonText = UA_SF_TR(@"UA_Download");
-    } else if (product.status == UAProductStatusDownloading ||
-               product.status == UAProductStatusWaiting) {
+    } else if (product.status == UAProductStatusDownloading 
+               || product.status == UAProductStatusPurchasing 
+               || product.status == UAProductStatusVerifyingReceipt
+               || product.status == UAProductStatusDecompressing) {
         buttonText = UA_SF_TR(@"UA_downloading");
     } else {
         buttonText = UA_SF_TR(@"UA_Buy");
@@ -220,7 +223,10 @@ UIKIT_EXTERN NSString* const UIApplicationDidBecomeActiveNotification __attribut
     self.navigationItem.rightBarButtonItem.title = buttonText;
 
     self.navigationItem.rightBarButtonItem.enabled = YES;
-    if (product.status == UAProductStatusDownloading || product.status == UAProductStatusWaiting) {
+    if (product.status == UAProductStatusDownloading 
+        || product.status == UAProductStatusPurchasing 
+        || product.status == UAProductStatusVerifyingReceipt
+        || product.status == UAProductStatusDecompressing) {
         self.navigationItem.rightBarButtonItem.enabled = NO;
     }
 }

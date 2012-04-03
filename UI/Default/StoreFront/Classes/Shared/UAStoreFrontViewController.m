@@ -30,6 +30,7 @@
 #import "UAViewUtils.h"
 #import "UAStoreFrontUI.h"
 #import "UAInventory.h"
+#import "UAAsycImageView.h"
 
 // Weak link to this notification since it doesn't exist in iOS 3.x
 UIKIT_EXTERN NSString* const UIApplicationDidEnterBackgroundNotification __attribute__((weak_import));
@@ -285,7 +286,9 @@ UIKIT_EXTERN NSString* const UIApplicationDidBecomeActiveNotification __attribut
     self.navigationItem.leftBarButtonItem.enabled = YES;
     for (UAProduct *product in [UAStoreFront productsForType:ProductTypeAll]) {
         if (product.status == UAProductStatusDownloading
-            || product.status == UAProductStatusWaiting) {
+            || product.status == UAProductStatusPurchasing
+            || product.status == UAProductStatusDecompressing
+            || product.status == UAProductStatusVerifyingReceipt) {
             self.navigationItem.leftBarButtonItem.enabled = NO;
             break;
         }

@@ -102,18 +102,18 @@ UA_VERSION_INTERFACE(UAPushVersion)
  * 
  */
 @interface UAPush : UAObservable<UARegistrationObserver> {
-    
-    id<UAPushNotificationDelegate> delegate; /**< Push notification delegate. Handles incoming notifications */
-    NSObject<UAPushNotificationDelegate> *defaultPushHandler; /**< A default implementation of the push notification delegate **/
-    
+
   @private
-    BOOL pushEnabled; /**< Push enabled flag. */
+    id<UAPushNotificationDelegate> delegate; /* Push notification delegate. Handles incoming notifications */
+    NSObject<UAPushNotificationDelegate> *defaultPushHandler; /* A default implementation of the push notification delegate */
+
+    BOOL pushEnabled; /* Push enabled flag. */
     BOOL autobadgeEnabled;
-    UIRemoteNotificationType notificationTypes; /**< Requested notification types */
-    NSString *alias; /**< Device token alias. */
-    NSMutableArray *tags; /**< Device token tags */
-    NSMutableDictionary *quietTime; /**< Quiet time period. */
-    NSString *tz; /**< Timezone, for quiet time */
+    UIRemoteNotificationType notificationTypes; /* Requested notification types */
+    NSString *alias; /* Device token alias. */
+    NSMutableArray *tags; /* Device token tags */
+    NSMutableDictionary *quietTime; /* Quiet time period. */
+    NSString *tz; /* Timezone, for quiet time */
 }
 
 @property (nonatomic, assign) id<UAPushNotificationDelegate> delegate;
@@ -143,6 +143,8 @@ SINGLETON_INTERFACE(UAPush);
                  animated:(BOOL)animated;
 + (void)closeApnsSettingsAnimated:(BOOL)animated;
 + (void)closeTokenSettingsAnimated:(BOOL)animated;
+
++ (void)land;
 
 - (void)registerForRemoteNotificationTypes:(UIRemoteNotificationType)types;
 - (void)registerDeviceToken:(NSData *)token;

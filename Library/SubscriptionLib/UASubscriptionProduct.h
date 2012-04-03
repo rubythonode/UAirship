@@ -27,16 +27,61 @@
 
 @class SKProduct;
 
+/**
+ * An enum representing the different possible susbscription product types.
+ */
+typedef enum _UASubscriptionProductType {
+    /**
+     * Legacy subscription proucts.
+     */
+    UASubscriptionProductTypeLegacy = 0,
+    /**
+     * Autorenewables.
+     */
+    UASubscriptionProductTypeAutorenewable = 1,
+    /**
+     * Free subscription products.
+     */
+    UASubscriptionProductTypeFree = 2
+} UASubscriptionProductType;
+
+/**
+ * An enum representing the different possible autorenewable durations.
+ */
 typedef enum _UAAutorenewableDuration {
+    /**
+     * No duration.
+     */
     UAAutorenewableDurationNone = 0,
+    /**
+     * Seven days.
+     */
     UAAutorenewableDuration7Days = 1,
+    /**
+     * One month.
+     */
     UAAutorenewableDuration1Month = 2,
+    /**
+     * Two months.
+     */
     UAAutorenewableDuration2Months = 3,
+    /**
+     * Three months.
+     */
     UAAutorenewableDuration3Months = 4,
+    /**
+     * Six months.
+     */
     UAAutorenewableDuration6Months = 5,
+    /**
+     * One year.
+     */
     UAAutorenewableDuration1Year = 6
 } UAAutorenewableDuration;
 
+/**
+ * This class represents a subscription product available for purchase.
+ */
 @interface UASubscriptionProduct : NSObject {
   @private
     NSString *productIdentifier;
@@ -47,7 +92,7 @@ typedef enum _UAAutorenewableDuration {
     NSURL *iconURL;
     int duration;
     
-    BOOL autorenewable;
+    UASubscriptionProductType productType;
     UAAutorenewableDuration autorenewableDuration;
 
     //property from SKProduct
@@ -73,9 +118,21 @@ typedef enum _UAAutorenewableDuration {
 /// @name Product Info
 ///---------------------------------------------------------------------------------------
 
+/**
+ * The product identifier.
+ */
 @property (nonatomic, retain) NSString *productIdentifier;
+/**
+ * The URL used to subscribe to this product.
+ */
 @property (nonatomic, retain) NSURL *subscribeURL;
+/**
+ * The URL for this product's preview image.
+ */
 @property (nonatomic, retain) NSURL *previewURL;
+/**
+ * The URL for this product's icon.
+ */
 @property (nonatomic, retain) NSURL *iconURL;
 
 /** 
@@ -86,16 +143,38 @@ typedef enum _UAAutorenewableDuration {
  * for sorting purposes.
  */
 @property (nonatomic, assign) int duration;
+/**
+ * The subscription key.
+ */
 @property (nonatomic, retain) NSString *subscriptionKey;
+/**
+ * The subscription name.
+ */
 @property (nonatomic, retain) NSString *subscriptionName;
 
-/** The SKProduct (from Apple) that this product provides. nil if the product is not for sale */
+/** 
+ * The SKProduct (from Apple) that this product provides. nil if the product is not for sale
+ */
 @property (nonatomic, retain) SKProduct *skProduct;
+/**
+ * The title.
+ */
 @property (nonatomic, retain) NSString *title;
+/**
+ * The description.
+ */
 @property (nonatomic, retain) NSString *productDescription;
+/**
+ * The price represented as an NSString.
+ */
 @property (nonatomic, retain) NSString *price;
+/**
+ * The price represented as an NSDecimalNumber.
+ */
 @property (nonatomic, retain) NSDecimalNumber *priceNumber;
-
+/**
+ * YES if the product is currently being purchased, NO otherwise.
+ */
 @property (nonatomic, assign) BOOL isPurchasing;
 
 ///---------------------------------------------------------------------------------------
@@ -126,8 +205,8 @@ typedef enum _UAAutorenewableDuration {
 /// @name Autorenewable Info
 ///---------------------------------------------------------------------------------------
 
-/** @return YES if the product is an autorenewable subscription, otherwise NO */
-@property(nonatomic, assign, getter=isAutorenewable) BOOL autorenewable;
+/** @return UASubscriptionProductTypeLegacy, UASubscriptionProductTypeAutorenewable or UASubscriptionProductTypeFree */
+@property(nonatomic, assign) UASubscriptionProductType productType;
 
 /** The duration of this autorenewable product. UAAutorenewableDurationNone returned if not an autorenewable */
 @property(nonatomic, assign) UAAutorenewableDuration autorenewableDuration;
