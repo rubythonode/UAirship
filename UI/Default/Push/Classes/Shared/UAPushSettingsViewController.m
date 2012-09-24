@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2011 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2012 Urban Airship Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -27,18 +27,29 @@
 #import "UAPush.h"
 #import "UAPushUI.h"
 #import "UAPushSettingsViewController.h"
+#import "UALocationService.h"
 
+// Overall counts for sectioned table view
 enum {
     SectionPushEnabled = 0,
-    SectionQuietTime   = 1,
-    SectionCount       = 2
+    SectionAirshipLocationEnabled = 1,
+    SectionQuietTime   = 2,
+    SectionCount       = 3
 };
 
+// The section for the push enabled switch is 0
+// The row count for the push table view is 1
 enum {
     PushEnabledSectionSwitchCell = 0,
     PushEnabledSectionRowCount   = 1
 };
 
+// The section for the Airship is 1
+// The row count is one
+//static NSUInteger AirshipLocationEnabledSectionSwitchCell = 1;
+static NSUInteger AirshipLocationEnabledSectionRowCount = 1;
+
+// Enums for the Quiet time table view
 enum {
     QuietTimeSectionSwitchCell  = 0,
     QuietTimeSectionStartCell   = 1,
@@ -60,6 +71,9 @@ enum {
 @synthesize quietTimeSwitch;
 @synthesize fromCell;
 @synthesize toCell;
+@synthesize airshipLocationEnabledSwitch = airshipLocationEnabledSwitch_;
+@synthesize airshipLocationEnabledLabel = airshipLocationEnabledLabel_;
+@synthesize airshipLocationEnabledCell = airshipLocationEnabledCell_;
 
 #pragma mark -
 #pragma mark Lifecycle methods
@@ -78,13 +92,15 @@ enum {
     
     self.tableView = nil;
     self.datePicker = nil;
-    
+    self.airshipLocationEnabledSwitch = nil;
+    self.airshipLocationEnabledLabel = nil;
+    self.airshipLocationEnabledCell = nil;
     [super dealloc];
 }
 
 - (void)viewDidLoad {
-    [self initViews];
     [super viewDidLoad];
+    [self initViews];
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
@@ -105,7 +121,9 @@ enum {
     
     self.tableView = nil;
     self.datePicker = nil;
-
+    self.airshipLocationEnabledSwitch = nil;
+    self.airshipLocationEnabledLabel = nil;
+    self.airshipLocationEnabledCell = nil;
     [super viewDidUnload];
 }
 
@@ -113,7 +131,6 @@ enum {
     
     //Hide the picker if it was left up last time
     [self updateDatePicker:NO];
-    
     [super viewWillAppear:animated];
 }
 
@@ -140,6 +157,8 @@ enum {
     switch (section) {
         case SectionPushEnabled:
             return PushEnabledSectionRowCount;
+        case SectionAirshipLocationEnabled:
+            return AirshipLocationEnabledSectionRowCount;
         case SectionQuietTime:
         {
             if (pushEnabledSwitch.on && quietTimeSwitch.on) {
@@ -166,6 +185,8 @@ enum {
         }
     } else if (indexPath.section == SectionPushEnabled) {
         return pushEnabledCell;
+    } else if (indexPath.section == SectionAirshipLocationEnabled) {
+        return airshipLocationEnabledCell_;
     }
     return nil;
 }
@@ -180,6 +201,7 @@ enum {
     }
 }
 
+// UA_Push_Settings_Location_Enabled_Label
 #pragma mark -
 #pragma mark logic
 
@@ -195,6 +217,12 @@ enum {
         pushEnabledSwitch.on = NO;
     } else {
         pushEnabledSwitch.on = YES;
+    }
+    if ([UALocationService airshipLocationServiceEnabled]) {
+        airshipLocationEnabledSwitch_.on = YES;
+    }
+    else {
+        airshipLocationEnabledSwitch_.on = NO;
     }
     
     pushEnabledLabel.text = UA_PU_TR(@"UA_Push_Settings_Enabled_Label");
@@ -212,17 +240,16 @@ enum {
     [formatter setLocale:[[[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"] autorelease]];
     
     
-    NSDictionary *quietTime = [[NSUserDefaults standardUserDefaults] objectForKey:kQuietTime];
+    NSDictionary *quietTime = [[UAPush shared] quietTime];
     [formatter setDateFormat:@"HH:mm"];
+    quietTimeSwitch.on = [UAPush shared].quietTimeEnabled;
     if (quietTime != nil) {
         UALOG(@"Quiet time dict found: %@ to %@", [quietTime objectForKey:@"start"], [quietTime objectForKey:@"end"]);
-        quietTimeSwitch.on = YES;
         date1 = [formatter dateFromString:[quietTime objectForKey:@"start"]];
         date2 = [formatter dateFromString:[quietTime objectForKey:@"end"]];
     }
     
     if (date1 == nil || date2 == nil) {
-        quietTimeSwitch.on = NO;
         date1 = [formatter dateFromString:@"22:00"];//default start
         date2 = [formatter dateFromString:@"07:00"];//default end //TODO: make defaults parameters
     }
@@ -332,6 +359,13 @@ IF_IOS4_OR_GREATER (
         [self updateDatePicker:NO];
     }
     [self.tableView reloadData];
+    
+    if (airshipLocationEnabledSwitch_.on){
+        [UALocationService setAirshipLocationServiceEnabled:YES];
+    }
+    else {
+        [UALocationService setAirshipLocationServiceEnabled:NO];
+    }
 
 }
 
@@ -399,9 +433,12 @@ IF_IOS4_OR_GREATER (
         UALOG(@"Start String: %@", fromString);
         UALOG(@"End String: %@", toString);
         
+        [UAPush shared].quietTimeEnabled = YES;
         [[UAPush shared] setQuietTimeFrom:fromDate to:toDate withTimeZone:[NSTimeZone localTimeZone]];
+        [[UAPush shared] updateRegistration];
     } else {
-        [[UAPush shared] disableQuietTime];
+        [UAPush shared].quietTimeEnabled = NO;
+        [[UAPush shared] updateRegistration];
     }
     
 

@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2011 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2012 Urban Airship Inc. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -23,7 +23,6 @@
  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Foundation/Foundation.h>
 
 #define kEventAppInitSize               450//397 w/ push id, no inbox id
 #define kEventAppExitSize               200//136 w/ only network type
@@ -48,7 +47,8 @@
 - (NSString *)getType;
 - (void)gatherData:(NSDictionary*)context;
 - (int)getEstimatedSize;
-
+- (void)addDataFromSessionForKey:(NSString*)dataKey;
+- (void)addDataWithValue:(id)value forKey:(NSString*)key;
 @end
 
 @interface UAEventCustom : UAEvent {
@@ -63,27 +63,21 @@
 
 
 @interface UAEventAppInit : UAEvent
-{}
 @end
 
 @interface UAEventAppForeground : UAEventAppInit
-{}
 @end
 
 @interface UAEventAppExit : UAEvent
-{}
 @end
 
 @interface UAEventAppBackground : UAEventAppExit
-{}
 @end
 
 @interface UAEventDeviceRegistration : UAEvent
-{}
 @end
 
 @interface UAEventPushReceived : UAEvent
-{}
 @end
 
 /**
@@ -92,7 +86,6 @@
  * trigger a UAEventAppInactive event.
  */
 @interface UAEventAppActive : UAEvent
-{}
 @end
 
 /**
@@ -101,5 +94,4 @@
  * notification center in iOS5+, the user launches the task-bar, etc.
  */
 @interface UAEventAppInactive : UAEvent
-{}
 @end

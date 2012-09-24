@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2011 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2012 Urban Airship Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,8 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "UAirship.h"
-
+#import <CoreLocation/CoreLocation.h>
+#import "UAPush.h"
 
 @interface UAPushMoreSettingsViewController : UIViewController <UARegistrationObserver> {
     IBOutlet UITableView *tableView;
@@ -39,14 +39,17 @@
     
     UITableViewCell *helpSoundsCell;
     UITableViewCell *helpLogCell;
+    UITableViewCell *locationCell_;
 
     UIViewController *tokenViewController;
     UIViewController *aliasViewController;
     UIViewController *tagsViewController;
+
 }
 
 @property (nonatomic, retain) UITableView *tableView;
 @property (nonatomic, retain) UIImageView *footerImageView;
+@property (nonatomic, retain) UITableViewCell *locationCell;
 
 - (void)initCells;
 - (void)updateCellValues;
