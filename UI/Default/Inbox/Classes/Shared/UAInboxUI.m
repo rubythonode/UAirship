@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2012 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2013 Urban Airship Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -24,6 +24,7 @@
  */
 
 #import "UAInboxUI.h"
+#import "UAInboxUtils.h"
 #import "UAInboxMessageListController.h"
 #import "UAInboxMessageViewController.h"
 #import "UAInboxOverlayController.h"
@@ -33,9 +34,9 @@
 
 @interface UAInboxUI ()
 
-@property (nonatomic, retain) UIViewController *rootViewController;
-@property (nonatomic, retain) UAInboxMessageListController *messageListController;
-@property (nonatomic, retain) UAInboxAlertHandler *alertHandler;
+@property (nonatomic, strong) UIViewController *rootViewController;
+@property (nonatomic, strong) UAInboxMessageListController *messageListController;
+@property (nonatomic, strong) UAInboxAlertHandler *alertHandler;
 @property (nonatomic, assign) BOOL isVisible;
 
 - (void)quitInbox;
@@ -44,40 +45,25 @@
 
 @implementation UAInboxUI
 
-@synthesize localizationBundle;
-@synthesize rootViewController;
-@synthesize messageListController;
-@synthesize inboxParentController;
-@synthesize alertHandler;
-@synthesize useOverlay;
-@synthesize isVisible;
-
 SINGLETON_IMPLEMENTATION(UAInboxUI)
 
-- (void)dealloc {
-    RELEASE_SAFELY(localizationBundle);
-	RELEASE_SAFELY(alertHandler);
-    RELEASE_SAFELY(rootViewController);
-    RELEASE_SAFELY(inboxParentController);
-    [super dealloc];
-} 
 
 - (id)init {
-    if (self = [super init]) {
-		
+    self = [super init];
+    if (self) {
         NSString* path = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"UAInboxLocalization.bundle"];
         self.localizationBundle = [NSBundle bundleWithPath:path];
-		
+        
         self.useOverlay = NO;
         self.isVisible = NO;
         
-        self.messageListController = [[[UAInboxMessageListController alloc] initWithNibName:@"UAInboxMessageListController" bundle:nil] autorelease];
-        messageListController.title = @"Inbox";
-        messageListController.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(inboxDone:)] autorelease];
+        self.messageListController = [[UAInboxMessageListController alloc] initWithNibName:@"UAInboxMessageListController" bundle:nil];
+        self.messageListController.title = @"Inbox";
+        self.messageListController.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(inboxDone:)];
         
-        self.rootViewController = [[[UINavigationController alloc] initWithRootViewController:messageListController] autorelease];
+        self.rootViewController = [[UINavigationController alloc] initWithRootViewController:self.messageListController];
         
-        alertHandler = [[UAInboxAlertHandler alloc] init];        		
+        self.alertHandler = [[UAInboxAlertHandler alloc] init];
     }
     
     return self;
@@ -87,22 +73,28 @@ SINGLETON_IMPLEMENTATION(UAInboxUI)
     [self quitInbox];
 }
 
-+ (void)displayInbox:(UIViewController *)viewController animated:(BOOL)animated {
-    
-    [[[UAInbox shared] messageList] addObserver:[UAInboxUI shared].messageListController];
-	
-    if ([viewController isKindOfClass:[UINavigationController class]]) {
-        [(UINavigationController *)viewController popToRootViewControllerAnimated:NO];
++ (void)displayInboxInViewController:(UIViewController *)parentViewController animated:(BOOL)animated {
+
+    if ([parentViewController isKindOfClass:[UINavigationController class]]) {
+        [(UINavigationController *)parentViewController popToRootViewControllerAnimated:NO];
     }
 
-	[UAInboxUI shared].isVisible = YES;
+    [UAInboxUI shared].isVisible = YES;
     
-    UALOG(@"present modal");
-    [viewController presentModalViewController:[UAInboxUI shared].rootViewController animated:animated];
-} 
+    UA_LDEBUG(@"Presenting Inbox Modal");
+    UIViewController *inboxViewController = [UAInboxUI shared].rootViewController;
 
-+ (void)displayMessage:(UIViewController *)viewController message:(NSString *)messageID {
+    // Optionally specify a custom modal transition
+    inboxViewController.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
 
+    if ([parentViewController respondsToSelector:@selector(presentViewController:animated:completion:)]) { // iOS5+
+        [parentViewController presentViewController:inboxViewController animated:animated completion:nil];
+    } else { //4.x
+        [parentViewController presentModalViewController:inboxViewController animated:animated];
+    }
+}
+
++ (void)displayMessageWithID:(NSString *)messageID inViewController:(UIViewController *)parentViewController {
     if(![UAInboxUI shared].isVisible) {
         
         if ([UAInboxUI shared].useOverlay) {
@@ -111,12 +103,12 @@ SINGLETON_IMPLEMENTATION(UAInboxUI)
         }
         
         else {
-            UALOG(@"UI needs to be brought up!");
+            UALOG(@"Inbox UI needs to be visible before displaying a message. Displaying now.");
             // We're not inside the modal/navigationcontroller setup so lets start with the parent
-            [UAInboxUI displayInbox:[UAInboxUI shared].inboxParentController animated:NO]; // BUG?
+            [UAInboxUI displayInboxInViewController:[UAInboxUI shared].inboxParentController animated:NO]; // BUG?
         }
-	}
-		
+    }
+        
     // For iPhone
     UINavigationController *navController = (UINavigationController *)[UAInboxUI shared].rootViewController;
     UAInboxMessageViewController *mvc;
@@ -128,27 +120,37 @@ SINGLETON_IMPLEMENTATION(UAInboxUI)
     } 
     //otherwise, push over a new message view
     else {
-        mvc = [[[UAInboxMessageViewController alloc] initWithNibName:@"UAInboxMessageViewController" bundle:nil] autorelease];			
+        mvc = [[UAInboxMessageViewController alloc] initWithNibName:@"UAInboxMessageViewController" bundle:nil];            
         [mvc loadMessageForID:messageID];
         [navController pushViewController:mvc animated:YES];
     }
 }
 
-- (void)newMessageArrived:(NSDictionary *)message {
-    
-    NSString* alertText = [[message objectForKey: @"aps"] objectForKey: @"alert"];
-    
-    [alertHandler showNewMessageAlert:alertText];
+- (void)richPushNotificationArrived:(NSDictionary *)message {
+    //custom launch notification handling here
+}
+
+- (void)richPushMessageAvailable:(UAInboxMessage *)richPushMessage {
+    NSString *alertText = richPushMessage.title;
+    [self.alertHandler showNewMessageAlert:alertText withViewBlock:^{
+        [[UAInbox shared].uiClass displayMessageWithID:richPushMessage.messageID inViewController:nil];
+    }];
+}
+
+- (void)applicationLaunchedWithRichPushNotification:(NSDictionary *)notification {
+    //custom launch notification handling here
+}
+
+- (void)launchRichPushMessageAvailable:(UAInboxMessage *)richPushMessage {
+    [[UAInbox shared].uiClass displayMessageWithID:richPushMessage.messageID inViewController:nil];
 }
 
 - (void)quitInbox {
     
-    [[[UAInbox shared] messageList] removeObserver:messageListController];
-
-    if ([rootViewController isKindOfClass:[UINavigationController class]]) {
-        [(UINavigationController *)rootViewController popToRootViewControllerAnimated:NO];
+    if ([self.rootViewController isKindOfClass:[UINavigationController class]]) {
+        [(UINavigationController *)self.rootViewController popToRootViewControllerAnimated:NO];
     }
-	
+    
     self.isVisible = NO;
     
     //added iOS 5 parent/presenting view getter
@@ -164,29 +166,19 @@ SINGLETON_IMPLEMENTATION(UAInboxUI)
     // BUG: Workaround. ModalViewController does not handle resizing correctly if
     // dismissed in landscape when status bar is visible
     if (![UIApplication sharedApplication].statusBarHidden) {
-        con.view.frame = UAFrameForCurrentOrientation(con.view.frame);
+
+        UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
+        CGRect frame = con.view.frame;
+        if (orientation == UIInterfaceOrientationLandscapeRight) {
+            con.view.frame = CGRectMake(0, 0, frame.size.width, frame.size.height);
+        } else if (orientation == UIInterfaceOrientationLandscapeLeft) {
+            con.view.frame = CGRectMake(frame.origin.y, frame.origin.x, frame.size.width, frame.size.height);
+        }
     }
 }
 
 + (void)quitInbox {
     [[UAInboxUI shared] quitInbox];
-}
-
-+ (void)loadLaunchMessage {
-	
-	// if pushhandler has a messageID load it
-    UAInboxPushHandler *pushHandler = [UAInbox shared].pushHandler;
-
-    UAInboxMessage *msg = [[UAInbox shared].messageList messageForID:pushHandler.viewingMessageID];
-    
-    if (!msg) {
-        return;
-    }
-            
-    [UAInboxUI displayMessage:nil message:pushHandler.viewingMessageID];
-    
-    pushHandler.viewingMessageID = nil;
-    pushHandler.hasLaunchMessage = NO;
 }
 
 + (void)land {

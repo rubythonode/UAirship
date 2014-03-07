@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2012 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2013 Urban Airship Inc. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -31,14 +31,15 @@
 @implementation UAPushNotificationHandler
 
 - (void)displayNotificationAlert:(NSString *)alertMessage {
-	
+
+    UA_LDEBUG(@"Received an alert in the foreground.");
+    
 	UIAlertView *alert = [[UIAlertView alloc] initWithTitle: UA_PU_TR(@"UA_Notification_Title")
                                                     message: alertMessage
                                                    delegate: nil
                                           cancelButtonTitle: @"OK"
                                           otherButtonTitles: nil];
 	[alert show];
-	[alert release];
 }
 
 - (void)displayLocalizedNotificationAlert:(NSDictionary *)alertDict {
@@ -47,7 +48,7 @@
 	// This should be customized to fit your message details or usage scenario
 	//message = [[alertDict valueForKey:@"alert"] valueForKey:@"body"];
 	
-    UALOG(@"Got an alert with a body.");
+    UA_LDEBUG(@"Received an alert in the foreground with a body.");
     
     NSString *body = [alertDict valueForKey:@"body"];
     
@@ -57,7 +58,6 @@
                                           cancelButtonTitle: @"OK"
                                           otherButtonTitles: nil];
 	[alert show];
-	[alert release];
 }
 
 - (void)playNotificationSound:(NSString *)sound {
@@ -75,8 +75,8 @@
         NSString *path = [[NSBundle mainBundle] pathForResource:[sound stringByDeletingPathExtension] 
                                                          ofType:[sound pathExtension]];
         if (path) {
-            UALOG(@"Received an alert with a sound: %@", sound);
-            AudioServicesCreateSystemSoundID((CFURLRef)[NSURL fileURLWithPath:path], &soundID);
+            UALOG(@"Received a foreground alert with a sound: %@", sound);
+            AudioServicesCreateSystemSoundID((__bridge CFURLRef)[NSURL fileURLWithPath:path], &soundID);
             AudioServicesPlayAlertSound(soundID);
         } else {
             UALOG(@"Received an alert with a sound that cannot be found the application bundle: %@", sound);
@@ -91,23 +91,41 @@
 
 }
 
-- (void)handleBadgeUpdate:(int)badgeNumber {
-	UALOG(@"Received an alert with a new badge");
+- (void)handleBadgeUpdate:(NSInteger)badgeNumber {
+	UA_LDEBUG(@"Received an alert in the foreground with a new badge");
+
+    // Sets the application badge to the value in the notification
 	[[UIApplication sharedApplication] setApplicationIconBadgeNumber:badgeNumber];
 }
 
-- (void)handleNotification:(NSDictionary *)notification withCustomPayload:(NSDictionary *)customData {
-    UALOG(@"Received an alert with a custom payload");
-	
-	// Do something with your customData JSON, then entire notification is also available
-	
+- (void)receivedForegroundNotification:(NSDictionary *)notification {
+    UA_LDEBUG(@"Received a notification while the app was already in the foreground");
+
+    // Do something with your customData JSON, then entire notification is also available
 }
 
-- (void)handleBackgroundNotification:(NSDictionary *)notification {
-    UALOG(@"The application resumed from a notification.");
-	
-	// Do something when launched from the background via a notification
-	
+- (void)launchedFromNotification:(NSDictionary *)notification {
+    UA_LDEBUG(@"The application was launched or resumed from a notification");
+
+    // Do something when launched via a notification
+}
+
+- (void)receivedForegroundNotification:(NSDictionary *)notification fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler{
+    UA_LDEBUG(@"Received a notification while the app was already in the foreground");
+
+    // Do something with your customData JSON, then entire notification is also available
+
+    // Call the completion handler
+    completionHandler(UIBackgroundFetchResultNoData);
+}
+
+- (void)launchedFromNotification:(NSDictionary *)notification fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    UA_LDEBUG(@"The application was launched or resumed from a notification");
+
+    // Do something when launched via a notification
+
+    // Call the completion handler
+    completionHandler(UIBackgroundFetchResultNoData);
 }
 
 @end
