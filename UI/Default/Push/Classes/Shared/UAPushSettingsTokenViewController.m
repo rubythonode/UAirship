@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,7 @@
 
 #import "UAPushSettingsTokenViewController.h"
 #import "UAirship.h"
-
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 60000
-// This is available in iOS 6.0 and later, define it for older versions
-#define NSLineBreakByWordWrapping 0
-#endif
+#import "NSString+UASizeWithFontCompatibility.h"
 
 @implementation UAPushSettingsTokenViewController
 
@@ -44,17 +40,8 @@
 }
 
 - (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
     self.tokenLabel.text = [UAirship shared].deviceToken ? [UAirship shared].deviceToken : @"Unavailable";
-}
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    return YES;
-}
-
-- (void)viewDidUnload {
-    [super viewDidUnload];
-    self.emailButton = nil;
-    self.tokenLabel = nil;
 }
 
 #pragma mark -
@@ -64,7 +51,7 @@
 
 - (CGFloat)tableView: (UITableView *) tableView heightForRowAtIndexPath:(NSIndexPath *) indexPath {
     UIFont *font = [UIFont systemFontOfSize:17];
-    CGFloat height = [self.text sizeWithFont:font
+    CGFloat height = [self.text uaSizeWithFont:font
                       constrainedToSize:CGSizeMake(280.0, 1500.0)
                           lineBreakMode:NSLineBreakByWordWrapping].height;
     return height + kCellPaddingHeight;
@@ -92,11 +79,11 @@
 
     UILabel* description = [[UILabel alloc] init];
     description.text = self.text;
-    description.lineBreakMode = UILineBreakModeWordWrap;
+    description.lineBreakMode = 0; // NSLineBreakByWordWrapping (iOS6+) and UILineBreakModeWordWrap (<=iOS5);
     description.numberOfLines = 0;
     description.backgroundColor = [UIColor clearColor];
     [description setFont: font];
-    CGFloat height = [self.text sizeWithFont:font
+    CGFloat height = [self.text uaSizeWithFont:font
                       constrainedToSize:CGSizeMake(280.0, 800.0)
                           lineBreakMode:NSLineBreakByWordWrapping].height;
     [description setFrame: CGRectMake(0.0f, 10.0f, 320.0f, height)];
@@ -124,8 +111,8 @@
 - (IBAction)emailDeviceToken {
 
     if ([MFMailComposeViewController canSendMail]) {
-		MFMailComposeViewController *mfViewController = [[MFMailComposeViewController alloc] init];
-		mfViewController.mailComposeDelegate = self;
+        MFMailComposeViewController *mfViewController = [[MFMailComposeViewController alloc] init];
+        mfViewController.mailComposeDelegate = self;
         
         
         
@@ -133,42 +120,42 @@
         
         [mfViewController setSubject:@"Device Token"];
         [mfViewController setMessageBody:messageBody isHTML:NO];
-		
-		[self presentModalViewController:mfViewController animated:YES];
-	}else {
-		UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"" message:@"Your device is not currently configured to send mail." delegate:nil cancelButtonTitle:@"ok" otherButtonTitles:nil];
-		
-		[alert show];
-	}
+        
+        [self presentViewController:mfViewController animated:YES completion:NULL];
+    } else {
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"" message:@"Your device is not currently configured to send mail." delegate:nil cancelButtonTitle:@"ok" otherButtonTitles:nil];
+        
+        [alert show];
+    }
 }
 
 #pragma mark -
 #pragma mark MFMailComposeViewControllerDelegate Methods
 
 - (void)mailComposeController:(MFMailComposeViewController*)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error {
-	UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Message Status" message:@"" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-	
-	switch (result) {
-		case MFMailComposeResultCancelled:
-			//alert.message = @"Canceled";
-			break;
-		case MFMailComposeResultSaved:
-			//alert.message = @"Saved";
-			break;
-		case MFMailComposeResultSent:
-			alert.message = @"Sent";
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Message Status" message:@"" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+    
+    switch (result) {
+        case MFMailComposeResultCancelled:
+            //alert.message = @"Canceled";
+            break;
+        case MFMailComposeResultSaved:
+            //alert.message = @"Saved";
+            break;
+        case MFMailComposeResultSent:
+            alert.message = @"Sent";
             [alert show];
-			break;
-		case MFMailComposeResultFailed:
-			//alert.message = @"Message Failed";
-			break;
-		default:
-			//alert.message = @"Message Not Sent";
-        break;	
+            break;
+        case MFMailComposeResultFailed:
+            //alert.message = @"Message Failed";
+            break;
+        default:
+            //alert.message = @"Message Not Sent";
+        break;    
     }
     
-	[self dismissModalViewControllerAnimated:YES];
-	
+    [self dismissViewControllerAnimated:YES completion:NULL];
+    
 
 }
 

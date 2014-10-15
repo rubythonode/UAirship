@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
 
 #import "UAirship.h"
 #import "UAPush.h"
-#import "UAPushUI.h"
+#import "UAPushLocalization.h"
 #import "UAPushSettingsViewController.h"
 #import "UALocationService.h"
 
@@ -41,7 +41,8 @@ enum {
 // The row count for the push table view is 1
 enum {
     PushEnabledSectionSwitchCell = 0,
-    PushEnabledSectionRowCount   = 1
+    PushEnabledSectionSettingsLinkCell = 1,
+    PushEnabledSectionRowCount = 2
 };
 
 // The section for the Airship is 1
@@ -66,37 +67,33 @@ enum {
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self initViews];
+
+    // Register for foreground notifications so that we can update
+    // our push settings when a user comes back from Settings.app
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(updateSettingsLinkText)
+                                                 name:UIApplicationWillEnterForegroundNotification
+                                               object:nil];
 }
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    return YES;
-}
-
-- (void)viewDidUnload {
-
-    self.pushEnabledSwitch = nil;
-    self.pushEnabledLabel = nil;
-    self.pushEnabledCell = nil;
-    
-    self.quietTimeSwitch = nil;
-    self.quietTimeLabel = nil;
-    self.quietTimeEnabledCell = nil;
-    self.toCell = nil;
-    self.fromCell = nil;
-    
-    self.tableView = nil;
-    self.datePicker = nil;
-    self.airshipLocationEnabledSwitch = nil;
-    self.airshipLocationEnabledLabel = nil;
-    self.airshipLocationEnabledCell = nil;
-    [super viewDidUnload];
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
-    
+
     //Hide the picker if it was left up last time
     [self updateDatePicker:NO];
+
+    [self updateSettingsLinkText];
+
     [super viewWillAppear:animated];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+
+    [self saveState];
 }
 
 - (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
@@ -119,16 +116,27 @@ enum {
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+
+    BOOL pushEnabledSwitchOn = self.pushEnabledSwitch.on;
+
     switch (section) {
         case SectionPushEnabled:
-            return PushEnabledSectionRowCount;
+        {
+            // Add a row if we need to show a system push warning/link
+            if ([self shouldDisplaySystemPushRow]) {
+                return 2;
+            } else {
+                // Else row count is 1
+                return 1;
+            }
+        }
         case SectionAirshipLocationEnabled:
-            return AirshipLocationEnabledSectionRowCount;
+            return (NSInteger)AirshipLocationEnabledSectionRowCount;
         case SectionQuietTime:
         {
-            if (self.pushEnabledSwitch.on && self.quietTimeSwitch.on) {
+            if (pushEnabledSwitchOn && self.quietTimeSwitch.on) {
                 return QuietTimeSectionRowCount;
-            } else if (self.pushEnabledSwitch.on) {
+            } else if (pushEnabledSwitchOn) {
                 return 1;
             }
         }
@@ -149,7 +157,11 @@ enum {
             return self.toCell;
         }
     } else if (indexPath.section == SectionPushEnabled) {
-        return self.pushEnabledCell;
+        if (indexPath.row == PushEnabledSectionSwitchCell) {
+            return self.pushEnabledCell;
+        } else {
+            return self.pushSystemSettingsCell;
+        }
     } else if (indexPath.section == SectionAirshipLocationEnabled) {
         return self.airshipLocationEnabledCell;
     }
@@ -159,45 +171,53 @@ enum {
 #pragma mark -
 #pragma mark UITableVieDelegate Methods
 - (void)tableView:(UITableView *)view didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.row == 1 || indexPath.row == 2) {
-        [self updateDatePicker:YES];
-    } else {
-        [self updateDatePicker:NO];
+
+    if (indexPath.section == SectionPushEnabled && indexPath.row == PushEnabledSectionSettingsLinkCell) {
+        if ([UIUserNotificationSettings class]) { // only open the settings screen if the user notification settings (iOS8+) constant exists
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString]];
+        }
+    } else if (indexPath.section == SectionQuietTime) {
+        if (indexPath.row == 1 || indexPath.row == 2) {
+            [self updateDatePicker:YES];
+        } else {
+            [self updateDatePicker:NO];
+        }
     }
 }
 
-// UA_Push_Settings_Location_Enabled_Label
 #pragma mark -
 #pragma mark logic
 
 - (void)initViews {
-    self.title = UA_PU_TR(@"UA_Push_Settings_Title");
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
-                                                                                            target:self
-                                                                                            action:@selector(quit)];
 
-    UIRemoteNotificationType type = [[UIApplication sharedApplication] enabledRemoteNotificationTypes];
-    if (type == UIRemoteNotificationTypeNone || ![UAPush shared].pushEnabled) {
-        self.pushEnabledSwitch.on = NO;
-    } else {
-        self.pushEnabledSwitch.on = YES;
+    self.title = UAPushLocalizedString(@"UA_Push_Settings_Title");
+
+    self.pushEnabledSwitch.on = [UAPush shared].userPushNotificationsEnabled;
+
+    if (!self.pushSystemSettingsCell) {
+        self.pushSystemSettingsCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle
+                                                             reuseIdentifier:nil];
+
+        // Only display disclosure warning and accept input if we can link to settings
+        if ([UIUserNotificationSettings class]) {
+            self.pushSystemSettingsCell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        } else {
+            // Do not accept any touches if we can't link to settings
+            self.pushSystemSettingsCell.userInteractionEnabled = NO;
+        }
+        self.pushSystemSettingsCell.selectionStyle = UITableViewCellSelectionStyleNone;
     }
-    if ([UALocationService airshipLocationServiceEnabled]) {
-        self.airshipLocationEnabledSwitch.on = YES;
-    }
-    else {
-        self.airshipLocationEnabledSwitch.on = NO;
-    }
+
+    self.airshipLocationEnabledSwitch.on = [UALocationService airshipLocationServiceEnabled];
     
-    self.pushEnabledLabel.text = UA_PU_TR(@"UA_Push_Settings_Enabled_Label");
-    self.airshipLocationEnabledLabel.text = UA_PU_TR(@"UA_Push_Settings_Location_Enabled_Label");
-    self.quietTimeLabel.text = UA_PU_TR(@"UA_Push_Settings_Quiet_Time_Label");
+    self.pushEnabledLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Enabled_Label");
+    self.airshipLocationEnabledLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Location_Enabled_Label");
+    self.quietTimeLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Quiet_Time_Label");
     
     self.fromCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     self.toCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
-    self.fromCell.textLabel.text = UA_PU_TR(@"UA_Quiet_Time_From");
-    self.toCell.textLabel.text = UA_PU_TR(@"UA_Quiet_Time_To");
-
+    self.fromCell.textLabel.text = UAPushLocalizedString(@"UA_Quiet_Time_From");
+    self.toCell.textLabel.text = UAPushLocalizedString(@"UA_Quiet_Time_To");
     
     NSDate *date1 = nil;
     NSDate *date2 = nil;
@@ -241,13 +261,14 @@ enum {
 }
 
 - (void)updatePickerLayout {
-    
+
     CGRect viewBounds = self.view.bounds;
     
     //Manually set the size of the picker for better landscape experience
     //Older  devies do not like the custom size. It breaks the picker.
                     
     //If the picker is in a portrait container, use std portrait picker dims
+
     if (viewBounds.size.height >= viewBounds.size.width) {
         self.datePicker.bounds = CGRectMake(0, 0, 320, 216);
     } else {
@@ -275,32 +296,31 @@ enum {
     }
 }
 
-- (IBAction)quit {
+- (void)saveState {
     
     if (self.dirty) {
+        UISwitch *strongPushEnabledSwitch = self.pushEnabledSwitch;
+
+        [UAPush shared].userPushNotificationsEnabled = strongPushEnabledSwitch.on;
         
-        [UAPush shared].pushEnabled = self.pushEnabledSwitch.on;
-        
-        if (self.pushEnabledSwitch.on) {
+        if (strongPushEnabledSwitch.on) {
             [self updateQuietTime];
         }
         
         self.dirty = NO;
     }
-    
-    [UAPush closeApnsSettingsAnimated:YES];
 }
 
 - (IBAction)pickerValueChanged:(id)sender {
 
     self.dirty = YES;
-    
+
     NSDate *date = [self.datePicker date];
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
     [formatter setDateStyle:NSDateFormatterNoStyle];
     [formatter setTimeStyle:NSDateFormatterShortStyle];
     
-    NSInteger row = [[self.tableView indexPathForSelectedRow] row];
+    NSInteger row = (NSInteger)[[self.tableView indexPathForSelectedRow] row];
     if (row == QuietTimeSectionStartCell) {
         self.fromCell.detailTextLabel.text = [formatter stringFromDate:date];
         [self.fromCell setNeedsLayout];
@@ -339,6 +359,9 @@ enum {
     
     [UIView beginAnimations:nil context:nil];
     [UIView setAnimationDuration:0.4];
+
+    UITableView *strongTableView = self.tableView;
+
     if (show) {
         [self.view addSubview:self.datePicker];
         self.pickerDisplayed = YES;
@@ -348,14 +371,14 @@ enum {
         int scrollOffset = MAX(0, 
                                self.toCell.frame.origin.y
                                + self.toCell.frame.size.height
-                               + self.tableView.sectionFooterHeight
+                               + strongTableView.sectionFooterHeight
                                - self.datePicker.frame.origin.y);
-        self.tableView.contentOffset = CGPointMake(0, scrollOffset);
+        strongTableView.contentOffset = CGPointMake(0, scrollOffset);
     } else {
         self.pickerDisplayed = NO;
-        self.tableView.contentOffset = CGPointZero;//reset scroll offset
+        strongTableView.contentOffset = CGPointZero;//reset scroll offset
         self.datePicker.frame = self.pickerHiddenFrame;
-        [self.tableView deselectRowAtIndexPath:[self.tableView indexPathForSelectedRow] animated:NO];
+        [strongTableView deselectRowAtIndexPath:[strongTableView indexPathForSelectedRow] animated:NO];
     }
     [UIView commitAnimations];
     
@@ -371,7 +394,7 @@ enum {
     NSString *fromString = self.fromCell.detailTextLabel.text;
     NSString *toString = self.toCell.detailTextLabel.text;
 
-    NSInteger row = [[self.tableView indexPathForSelectedRow] row];
+    NSUInteger row = (NSUInteger)[[strongTableView indexPathForSelectedRow] row];
     if (row == 1 && [fromString length] != 0) {
         NSDate *fromDate = [formatter dateFromString:fromString];
         [self.datePicker setDate:fromDate animated:YES];
@@ -395,7 +418,16 @@ enum {
         NSDate *toDate = [formatter dateFromString:toString];
                 
         [UAPush shared].quietTimeEnabled = YES;
-        [[UAPush shared] setQuietTimeFrom:fromDate to:toDate withTimeZone:[NSTimeZone localTimeZone]];
+
+        NSDateComponents *fromComponents = [[NSCalendar currentCalendar] components:NSCalendarUnitHour|NSCalendarUnitMinute fromDate:fromDate];
+        NSDateComponents *toComponents = [[NSCalendar currentCalendar] components:NSCalendarUnitHour|NSCalendarUnitMinute fromDate:toDate];
+
+
+        [[UAPush shared] setQuietTimeStartHour:(NSUInteger)fromComponents.hour
+                                   startMinute:(NSUInteger)fromComponents.minute
+                                       endHour:(NSUInteger)toComponents.hour
+                                     endMinute:(NSUInteger)toComponents.minute];
+
         [[UAPush shared] updateRegistration];
     } else {
         [UAPush shared].quietTimeEnabled = NO;
@@ -403,6 +435,51 @@ enum {
     }
 
 
+}
+
+#pragma mark -
+#pragma mark System Settings Warning/Link
+
+/**
+ * Update the text in the table cells to reflect the current push-enabled state.
+ */
+- (void)updateSettingsLinkText {
+    UIUserNotificationType types = [[UAPush shared] currentEnabledNotificationTypes];
+
+    // Types are not set as desired
+    // NOTE: when comparing types, always make sure userPushNotificationsEnabled == YES, otherwise
+    // we might be comparing prior to registration.
+    if ([UAPush shared].userPushNotificationsEnabled && types == UIUserNotificationTypeNone) {
+        // No user notifications are available - point to settings
+        self.pushSystemSettingsCell.textLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Link_Disabled_Title");
+        self.pushSystemSettingsCell.detailTextLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Link_Disabled_Detail");
+    } else if ([UAPush shared].userPushNotificationsEnabled && types != [UAPush shared].userNotificationTypes) {
+        // Check the current setting rather than the button on/off state to ensure we're comparing
+        // the right things, as registration won't occur until after the scren closes
+        //
+        // Only some user notification types are available - point to settings
+        self.pushSystemSettingsCell.textLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Link_Partially_Disabled_Title");
+        self.pushSystemSettingsCell.detailTextLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Link_Partially_Disabled_Detail");
+    } else {
+        // Default case - things are good. Just a friendly link.
+        self.pushSystemSettingsCell.textLabel.text = UAPushLocalizedString(@"UA_Push_Settings_Link_Title");
+        self.pushSystemSettingsCell.detailTextLabel.text = UAPushLocalizedString(@"UA_Push_settings_Link_Detail");
+    }
+
+    [self.tableView reloadData];
+}
+
+/**
+ * Return YES if the table should include a row with a system push settings link.
+ *
+ * @return YES if the row should be included, otherwise NO.
+ */
+- (BOOL)shouldDisplaySystemPushRow {
+    // If the switch is on, AND we can link to user notification settings (i.e., iOS8), let's show the toggle
+    return ([UIUserNotificationSettings class] && self.pushEnabledSwitch.on);
+
+    // If you only want to show the link when settings are mismatched, add an additional condition:
+    //            && [UAPush currentEnabledNotificationTypes] != [UAPush shared].userNotificationTypes);
 }
 
 @end

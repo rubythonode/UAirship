@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,7 @@
 
 #import "UAPushSettingsAliasViewController.h"
 #import "UAPush.h"
-
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 60000
-// This is available in iOS 6.0 and later, define it for older versions
-#define NSLineBreakByWordWrapping 0
-#endif
+#import "NSString+UASizeWithFontCompatibility.h"
 
 enum {
     SectionDesc        = 0,
@@ -54,20 +50,13 @@ enum {
     [super viewDidLoad];
 
     self.title = @"Device Alias";
-    
-    self.aliasField.text = [UAPush shared].alias;
-    self.aliasField.clearsOnBeginEditing = YES;
-    self.aliasField.accessibilityLabel = @"Edit Alias";
+
+    UITextField *strongAliasField = self.aliasField;
+    strongAliasField.text = [UAPush shared].alias;
+    strongAliasField.clearsOnBeginEditing = YES;
+    strongAliasField.accessibilityLabel = @"Edit Alias";
     self.textLabel.text = @"Assign an alias to a device or a group of devices to simplify "
                      @"the process of sending notifications.";
-}
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    return YES;
-}
-
-- (void)viewDidUnload {
-    [super viewDidUnload];
 }
 
 #pragma mark -
@@ -77,7 +66,8 @@ enum {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     if (indexPath.section == SectionDesc) {
-        CGFloat height = [self.textLabel.text sizeWithFont:self.textLabel.font
+        UILabel *strongTextLabel = self.textLabel;
+        CGFloat height = [strongTextLabel.text uaSizeWithFont:strongTextLabel.font
                           constrainedToSize:CGSizeMake(300, 1500)
                               lineBreakMode:NSLineBreakByWordWrapping].height;
         return height + kCellPaddingHeight * 2;
@@ -129,20 +119,20 @@ enum {
 
 - (void)textFieldDidEndEditing:(UITextField *)textField {
     
-	NSString *newAlias = self.aliasField.text;
-	
-	// Trim leading whitespace
-	NSRange range = [newAlias rangeOfString:@"^\\s*" options:NSRegularExpressionSearch];
-	NSString *result = [newAlias stringByReplacingCharactersInRange:range withString:@""];
-	
+    NSString *newAlias = self.aliasField.text;
+
+    // Trim leading whitespace
+    NSRange range = [newAlias rangeOfString:@"^\\s*" options:NSRegularExpressionSearch];
+    NSString *result = [newAlias stringByReplacingCharactersInRange:range withString:@""];
+
     if ([result length] != 0) {
         [[UAPush shared] setAlias:result];
         [[UAPush shared] updateRegistration];
     } else {
-		textField.text = nil;
-		[[UAPush shared] setAlias:nil];
+        textField.text = nil;
+        [[UAPush shared] setAlias:nil];
         [[UAPush shared] updateRegistration];
-	}
+    }
 }
 
 @end

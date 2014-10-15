@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -26,19 +26,34 @@
 
 #import <UIKit/UIKit.h>
 #import "UAInboxMessageListDelegate.h"
-#import "UABarButtonSegmentedControl.h"
 #import "UABeveledLoadingIndicator.h"
 
 /**
  * This class is a reference implementation of a table view controller drawing from the inbox
  * message list.
  */
-@interface UAInboxMessageListController : UIViewController <UITableViewDelegate, UITableViewDataSource, UAInboxMessageListDelegate>
+@interface UAInboxMessageListController : UIViewController <UITableViewDelegate,
+                                                            UITableViewDataSource,
+                                                            UIScrollViewDelegate>
+
+/**
+ * Displays a new message, either by updating the currently displayed message or
+ * by navigating to a new one.
+ *
+ * @param message The message to load.
+ */
+- (void)displayMessage:(UAInboxMessage *)message;
 
 /**
  * Set this property to YES if the class should show alert dialogs in erroneous
  * situations, NO otherwise.  Defaults to YES.
  */
 @property (nonatomic, assign) BOOL shouldShowAlerts;
+
+/**
+ * Block that will be invoked when a message view controller receives a closeWindow message
+ * from the webView.
+ */
+@property (nonatomic, copy) void (^closeBlock)(BOOL animated);
 
 @end

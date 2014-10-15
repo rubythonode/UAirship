@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -33,15 +33,6 @@
 
 @implementation UALocationSettingsViewController
 
-
-- (void)viewDidUnload {
-    [self turnOffLocationDisplay];
-    self.locationTableView = nil;
-    self.locationDisplay = nil;
-    [super viewDidUnload];
-    // Release any retained subviews of the main view.
-}
-
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.reportedLocations = [NSMutableArray arrayWithCapacity:10];
@@ -64,26 +55,21 @@
     [super viewWillDisappear:animated];
 }
 
-
-#pragma mark -
-#pragma mark Rotation
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
-{
-    return NO;
-}
-
 #pragma mark -
 #pragma mark GUI operations
 
 - (void)turnOffLocationDisplay {
     [self.locationDisplay removeObjectsInRange:NSMakeRange(1, ([self.locationDisplay count] -1))];
-    NSUInteger rows = [self.locationTableView numberOfRowsInSection:0];
+
+    UITableView *strongLocationTableView = self.locationTableView;
+    NSInteger rows = (NSInteger)[strongLocationTableView numberOfRowsInSection:0];
     NSMutableArray *arrayOfDeletes = [NSMutableArray arrayWithCapacity:3];
+
     for (NSUInteger i=1; i < rows; i++) {
-        NSIndexPath *path = [NSIndexPath indexPathForRow:i inSection:0];
+        NSIndexPath *path = [NSIndexPath indexPathForRow:(NSInteger)i inSection:0];
         [arrayOfDeletes addObject:path];
     }
-    [self.locationTableView deleteRowsAtIndexPaths:arrayOfDeletes withRowAnimation:UITableViewRowAnimationFade];
+    [strongLocationTableView deleteRowsAtIndexPaths:arrayOfDeletes withRowAnimation:UITableViewRowAnimationFade];
 }
 
 - (void)setupLocationDisplay {
@@ -141,7 +127,7 @@
     if (0 == [indexPath indexAtPosition:1]) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
         cell.textLabel.text = [self.locationDisplay objectAtIndex:0];
-        cell.textLabel.textAlignment = UITextAlignmentCenter;
+        cell.textLabel.textAlignment = NSTextAlignmentCenter;// (iOS6) or UITextAlignmentCenter (<=iOS5);
     }
     if(1 == [indexPath indexAtPosition:1]) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"latitude"];
@@ -169,7 +155,7 @@
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return [self.locationDisplay count];
+    return (NSInteger)[self.locationDisplay count];
 }
 
 #pragma mark -
@@ -186,10 +172,16 @@
 - (void)locationService:(UALocationService*)service didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
     UALOG(@"LOCATION_AUTHORIZATION_STATUS %u", status);
 }
-- (void)locationService:(UALocationService*)service didUpdateToLocation:(CLLocation*)newLocation fromLocation:(CLLocation*)oldLocation {
+- (void)locationService:(UALocationService*)service didUpdateLocations:(NSArray *)locations {
+    
+    CLLocation *newLocation = [locations lastObject];
+    
     UALOG(@"LOCATION_UPDATE LAT:%f LONG:%f", newLocation.coordinate.latitude, newLocation.coordinate.longitude);
     [self addLocationToData:newLocation];
 }
 
+- (NSUInteger)supportedInterfaceOrientations{
+    return UIInterfaceOrientationMaskPortrait;
+}
 
 @end

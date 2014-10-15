@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -23,7 +23,7 @@
  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "UAPushUI.h"
+#import "UAPushLocalization.h"
 #import "UAPushNotificationHandler.h"
 
 #import <AudioToolbox/AudioServices.h>
@@ -33,31 +33,31 @@
 - (void)displayNotificationAlert:(NSString *)alertMessage {
 
     UA_LDEBUG(@"Received an alert in the foreground.");
-    
-	UIAlertView *alert = [[UIAlertView alloc] initWithTitle: UA_PU_TR(@"UA_Notification_Title")
+
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: UAPushLocalizedString(@"UA_Notification_Title")
                                                     message: alertMessage
                                                    delegate: nil
                                           cancelButtonTitle: @"OK"
                                           otherButtonTitles: nil];
-	[alert show];
+    [alert show];
 }
 
 - (void)displayLocalizedNotificationAlert:(NSDictionary *)alertDict {
-	
-	// The alert is a a dictionary with more details, let's just get the message without localization
-	// This should be customized to fit your message details or usage scenario
-	//message = [[alertDict valueForKey:@"alert"] valueForKey:@"body"];
-	
+
+    // The alert is a a dictionary with more details, let's just get the message without localization
+    // This should be customized to fit your message details or usage scenario
+    //message = [[alertDict valueForKey:@"alert"] valueForKey:@"body"];
+
     UA_LDEBUG(@"Received an alert in the foreground with a body.");
     
     NSString *body = [alertDict valueForKey:@"body"];
     
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: UA_PU_TR(@"UA_Notification_Title")
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: UAPushLocalizedString(@"UA_Notification_Title")
                                                     message: body
                                                    delegate: nil
                                           cancelButtonTitle: @"OK"
                                           otherButtonTitles: nil];
-	[alert show];
+    [alert show];
 }
 
 - (void)playNotificationSound:(NSString *)sound {
@@ -92,10 +92,10 @@
 }
 
 - (void)handleBadgeUpdate:(NSInteger)badgeNumber {
-	UA_LDEBUG(@"Received an alert in the foreground with a new badge");
+    UA_LDEBUG(@"Received an alert in the foreground with a new badge");
 
     // Sets the application badge to the value in the notification
-	[[UIApplication sharedApplication] setApplicationIconBadgeNumber:badgeNumber];
+    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:badgeNumber];
 }
 
 - (void)receivedForegroundNotification:(NSDictionary *)notification {
@@ -109,6 +109,7 @@
 
     // Do something when launched via a notification
 }
+
 
 - (void)receivedForegroundNotification:(NSDictionary *)notification fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler{
     UA_LDEBUG(@"Received a notification while the app was already in the foreground");
@@ -126,6 +127,20 @@
 
     // Call the completion handler
     completionHandler(UIBackgroundFetchResultNoData);
+}
+
+- (void)launchedFromNotification:(NSDictionary *)notification actionIdentifier:(NSString *)identifier completionHandler:(void (^)())completionHandler {
+    UA_LDEBUG(@"The application was launched or resumed from a foreground user notification button");
+    // Do something when launched via a user notification button
+
+    completionHandler();
+}
+
+- (void)receivedBackgroundNotification:(NSDictionary *)notification actionIdentifier:(NSString *)identifier completionHandler:(void (^)())completionHandler {
+    UA_LDEBUG(@"The application was started in the background from a user notification button");
+    // Do any background tasks via a user notificaiton button
+
+    completionHandler();
 }
 
 @end

@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -49,24 +49,9 @@
     self.navigationItem.rightBarButtonItem = self.rightButton;
 }
 
-- (void)viewDidUnload
-{
-    self.mapView = nil;
-    self.rightButton = nil;
-    [super viewDidUnload];
-}
-
 - (void)viewWillDisappear:(BOOL)animated {
     self.mapView.delegate = nil; // delegate is set in xib
     [super viewWillDisappear:animated];
-}
-
-#pragma mark -
-#pragma mark Autorotation
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
-{
-    return (interfaceOrientation != UIInterfaceOrientationPortraitUpsideDown);
 }
 
 #pragma mark -
@@ -94,10 +79,11 @@
 
 - (IBAction)rightBarButtonPressed:(id)sender {
     UA_LDEBUG(@"Right bar button pressed");
-    // The Map                   
-    if (self.mapView.annotations.count > 1) {
+    // The Map
+    MKMapView *strongMapView = self.mapView;
+    if (strongMapView.annotations.count > 1) {
         UA_LDEBUG(@"Removing annotations");
-        [self.mapView removeAnnotations:self.annotations];
+        [strongMapView removeAnnotations:self.annotations];
         self.rightButton.title = @"+Pin";
     }
     else {

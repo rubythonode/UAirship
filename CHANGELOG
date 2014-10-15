@@ -1,3 +1,183 @@
+iOS Changelog
+=============
+
+Migration Guide: http://docs.urbanairship.com/topic_guides/ios_migration.html.
+
+-----------
+iOS 8 Notes (Updated September 25, 2014)
+-----------
+
+Known issues with iOS 8.0.0 that may impact your application:
+- Applications do not enter the 'active' state when started from an interactive notification
+  and subsequent app sessions do not receive the application:didBecomeActive delegate call or
+  UIApplicationDidBecomeActiveNotification notification. The application state never
+  transitions out of 'inactive' (Radar #18179525). This will impact the accuracy of
+  reporting for applications using interactive notifications.
+- Background refresh always appears to be enabled in an application even when disabled in
+  settings and background push will not be delivered. Push registration will consider a
+  device in this situation able to receive a background notification when it cannot. (Radar #18298439)
+- Registering for UIUserNotificationTypeNone will prevent a re-registration until the device
+  has been restarted and the settings are manually updated in Settings.app. There is a
+  workaround for this issue in UA SDK 5.0.0. (Radar #17878212)
+- The boolean properties on UIUserNotificationAction are mutated in the
+  UIUserNotificationCategory isEqual: method, so the authorizationRequired and destructive
+  properties on an action may receive values from actions in other categories
+  in the set registered with iOS. You may see notification actions with the wrong color
+  or authorization required status (Radar #18385104).
+
+  NOTE:
+  The workaround for the bug impacting registrations for UIUserNotificationTypeNone
+  may impact your ability to send broadcast background pushes to ALL users if the payload
+  contains a badge, alert or sound as the user facing parts of the payload will still be
+  displayed by iOS even if your application has set userNotifications to NO in the SDK.
+  Currently, Urban Airship will not send any notifications to users who are not opted-in,
+  but we will soon be supporting the new iOS 8 feature that allows sending background push
+  to these users. If you wish to make use of this feature, be sure to send only data
+  (no badge/alert/sound) or wait for an updated SDK or instructions on how to disable the
+  workaround. We plan to release this as soon as we have verified that iOS contains a fix
+  for this issue.
+
+-----------------------
+5.0.3 - October 8, 2014
+-----------------------
+ - Fixed missing headers in AirshipKit.
+ - Fixed custom events attribution from a message center page if the page was
+   displayed using the UALandingPageOverlayController.
+
+--------------------------
+5.0.2 - September 25, 2014
+--------------------------
+ - Fixed issue where inbox messages were coming back after being deleted.
+
+--------------------------
+5.0.1 - September 23, 2014
+--------------------------
+ - Verify channel location exists during channel creation.
+ - Fixed "No Messages" not being displayed for Inbox.
+ - Updated build scripts to handle paths with spaces.
+
+--------------------------
+5.0.0 - September 17, 2014
+--------------------------
+
+New Features
+------------
+- Full support for iOS 8, including compatibility with Swift applications.
+- Includes an Embedded.framework for use in applications with a minimum SDK version of 8.0.
+- Includes support for interactive notifications and the new iOS 8 notification registration model.
+  - Includes more than 25 built-in interactive notification sets, including button resources
+    for 9 languages.
+  - Additional/replacement localization strings may be added to built-in actions.
+- Includes a new action for social sharing that can be called from pushes or web views.
+- Includes support for defining custom events in our reporting system.
+- Background push can now be used without an opt-in prompt (request remote-notification
+  background type in your Info.plist).
+- The inbox now stores local state for read/delete. The UI no longer needs to block while
+  updates are made.
+- Inbox core data operations are now performed on a background queue.
+
+Major API Changes
+-----------------
+- User notifications (badge, alert, sound) now default to OFF. This change is designed to
+  make it easier to prompt for permission in the right spot. If you were relying on the
+  old default (push enabled at start), you will need to update your registration logic.
+- Supports iOS 6+. (Support for iOS 5 has been removed).
+- UA location now handles iOS8-style authorization. Once location reporting is started and
+  an authorization prompt is presented, changes to the authorization level are not possible
+  without updating the app in the App Store. By default, "always" authorization will be requested.
+  To request "when in use" set the property 'requestAlwaysAuthorization' to NO on UALocationService.
+- Replaced existing tag modifiers on UAPush with more concisely named methods: addTag, addTags,
+  removeTag, and removeTags.
+- FOR DETAILED INFO: http://docs.urbanairship.com/topic_guides/ios_migration.html
+
+Sample UI Changes
+-----------------
+- Removed UAInboxUI and UAPushUI protocols. Sample code now displays views directly.
+- Refactored the localization in both sample projects.
+- Moved sample resources to a new common folder (including those used in the interactive
+  notifications).
+- Sample projects now include targets that use the embedded framework (static library
+  still used in the original targets).
+
+General Modernization
+---------------------
+- Modernized init and factory methods. All now return `instancetype` rather than `id` or
+  concrete classes.
+- NS_ENUM and NS_OPTIONS are now used throughout.
+- Removed previously deprecated methods and classes.
+- Removed use of methods deprecated in iOS 6 (now that iOS 5 support has been dropped).
+
+Documentation Updates
+---------------------
+- The SDK distribution now includes the API reference documentation in the `reference-docs` folder.
+- The generated (header) documentation (in reference-docs) now has complete coverage of our public interface,
+  including enums and block types.
+
+--------------------------
+4.0.4 - September 10, 2014
+--------------------------
+ - Fixed iOS 8 push prompt on first-run and immediate opt-out.
+ - Fixed quiet time setting not persisting between application restarts.
+ - Added work around for iOS 8 registration bug where disabling push registering prevents registering for notification types
+   without a device restart. Instead of registering for 0 notification types, the device will just be marked as opted-out. This only 
+   affects newer iOS 8 devices. For more information, see the documentation for allowUnregisteringUserNotificationTypes on UAPush. 
+ - UA location is now compatible with iOS 8 authorization modes. If building against Xcode 6, make sure to add the new authorization
+   keys (NSLocationAlwaysUsageDescription and NSLocationWhenInUseUsageDescription) to the application's info.plist. You must also manually
+   request the correct authorization before starting location on Urban Airship by calling either requestWhenInUseAuthorization or requestAlwaysAuthorization on CLLocationManager.
+
+-----------------------
+4.0.3 - August 28, 2014
+-----------------------
+ - Fix undefined symbols build issue when building against the iOS 5 version of the static library.
+
+-----------------------
+4.0.2 - August 18, 2014
+-----------------------
+This update is only required if building against the iOS 8 SDK.
+
+- Add basic support for new iOS 8 notification registration.
+
+---------------------
+4.0.1 - July 25, 2014
+---------------------
+- Tag utility now uses OS preferred language.
+- Renamed methods to prevent false positives when apps are scanned by Apple for use of undocumented APIs.
+- Aliases and tags are now trimmed to prevent device registration errors.
+- Added custom inbox UIs are now checked that they conform to the UAInboxUI protocol.
+- UAInboxMessage no longer extends NSManagedObject to protect against possible inbox message crashes.
+- Prefixed internal category extension names with 'UA' to prevent name conflicts with other libraries.
+- Fixed possible crash with background tasks.
+
+
+----------------------
+4.0.0 - March 25, 2014
+----------------------
+- Added Urban Airship Actions framework - a generic framework that provides a convenient way to
+  automatically perform tasks by name in response to push notifications, Rich App Page interactions and JavaScript.
+- Introduced a new device identifier, the Channel ID, which will replace the device token as the push address in Urban
+  Airship API calls.
+- Use background tasks for all registration and analytics traffic.
+- Refactored Urban Airship Javascript interface injection and webview url interception into UAWebViewTools and UIWebView+UAAdditions.
+- Deprecated Urban Airship scheme "ua" in favor of the new scheme "uairship".
+- Added Javascript interface methods - getMessageSentDateMS, getMessageSentDate, getMessageTitle, getMessageId, getUserId and getDeviceModel
+  to match the Android Urban Airship Javascript interface.
+
+--------------------------------------------
+3.1.1 (Internal Release) - November 21, 2013
+--------------------------------------------
+- Added logging channel id
+- Added 3.0.2 changes:
+  - Moved headers to project level.
+  - Fixed possible crash on iOS5 when opening rich push messages with embedded images.
+  - Fixed duplicate notification handling on background push applications.
+  - Fixed possible crash with auto app integration when sending performSelector methods to the app delegate.
+
+-------------------------
+3.0.4 - March 4, 2014
+-------------------------
+- Allow registrations in the background.
+- Fix an issue with inbox count.
+
 -------------------------
 3.0.3 - February 18, 2014
 -------------------------
@@ -10,6 +190,11 @@
 - Fixed possible crash on iOS5 when opening rich push messages with embedded images.
 - Fixed duplicate notification handling on background push applications.
 - Fixed possible crash with auto app integration when sending performSelector methods to the app delegate.
+
+--------------------------------------------
+3.1.0 (Internal Release) - November 14, 2013
+--------------------------------------------
+- Added ability to address opted out devices through channels.
 
 -----------------------
 3.0.1 - October 9, 2013

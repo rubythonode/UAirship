@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -35,7 +35,7 @@
 @implementation UALocationDemoAnnotation
 
 
-- (id)initWithLocation:(CLLocation*)location {
+- (instancetype)initWithLocation:(CLLocation*)location {
     self = [super init];
     if (self){
         self.coordinate = location.coordinate;
@@ -46,7 +46,7 @@
 }
 
 - (NSString*)monthDateFromDate:(NSDate *)date {
-    NSUInteger components = NSMonthCalendarUnit | NSDayCalendarUnit;
+    NSUInteger components = NSCalendarUnitMonth | NSCalendarUnitDay;
     NSDateComponents *monthDay = [[NSCalendar currentCalendar] components:components fromDate:date];
     return [NSString stringWithFormat:@"%ld/%ld", (long)monthDay.month, (long)monthDay.day];
 }

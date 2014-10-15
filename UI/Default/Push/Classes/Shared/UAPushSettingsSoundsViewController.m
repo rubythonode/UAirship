@@ -1,5 +1,5 @@
 /*
- Copyright 2009-2013 Urban Airship Inc. All rights reserved.
+ Copyright 2009-2014 Urban Airship Inc. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -25,13 +25,9 @@
 
 #import "UAGlobal.h"
 #import "UAPushSettingsSoundsViewController.h"
+#import "NSString+UASizeWithFontCompatibility.h"
 
 #import <AudioToolbox/AudioServices.h>
-
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 60000
-// This is available in iOS 6.0 and later, define it for older versions
-#define NSLineBreakByWordWrapping 0
-#endif
 
 enum {
     SectionDesc     = 0,
@@ -74,10 +70,6 @@ enum {
     @"This sample application includes the sound files below.";
 }
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    return YES;
-}
-
 #pragma mark -
 #pragma mark Table view data source
 
@@ -90,7 +82,7 @@ enum {
     // Return the number of rows in the section.
     switch (section) {
         case SectionSounds:
-            return [self.soundList count];
+            return (NSInteger)[self.soundList count];
         case SectionDesc:
             return DescSectionRowCount;
         default:
@@ -120,7 +112,7 @@ enum {
             }
             
             // Configure the cell...
-            cell.textLabel.text = [[[self.soundList objectAtIndex:indexPath.row] pathComponents] lastObject];
+            cell.textLabel.text = [[[self.soundList objectAtIndex:(NSUInteger)indexPath.row] pathComponents] lastObject];
             break;
         }
         default:
@@ -137,7 +129,7 @@ enum {
 
     if (indexPath.section == SectionSounds) {
         SystemSoundID soundID;
-        AudioServicesCreateSystemSoundID((__bridge CFURLRef)[NSURL fileURLWithPath:[self.soundList objectAtIndex:indexPath.row]], &soundID);
+        AudioServicesCreateSystemSoundID((__bridge CFURLRef)[NSURL fileURLWithPath:[self.soundList objectAtIndex:(NSUInteger)indexPath.row]], &soundID);
         AudioServicesPlayAlertSound(soundID);
         
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -148,7 +140,8 @@ enum {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     if (indexPath.section == SectionDesc) {
-        CGFloat height = [self.textLabel.text sizeWithFont:self.textLabel.font
+        UILabel *strongTextLabel = self.textLabel;
+        CGFloat height = [strongTextLabel.text uaSizeWithFont:strongTextLabel.font
                           constrainedToSize:CGSizeMake(240, 1500)
                               lineBreakMode:NSLineBreakByWordWrapping].height;
         return height + kCellPaddingHeight * 2;
@@ -167,17 +160,6 @@ enum {
     
     // Relinquish ownership any cached data, images, etc. that aren't in use.
 }
-
-- (void)viewDidUnload {
-    // Relinquish ownership of anything that can be recreated in viewDidLoad or on demand.
-    // For example: self.myOutlet = nil;
-    
-    self.textCell = nil;
-    self.textLabel = nil;
-}
-
-
-
 
 @end
 
